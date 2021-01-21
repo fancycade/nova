@@ -50,84 +50,72 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     %% This is a bit ugly, but we need to do this anyhow(?)
-    SupFlags = #{strategy => one_for_one,
-                 intensity => 1,
+    SupFlags = #{strategy => one_for_one, intensity => 1,
                  period => 5},
-
-    Configuration = application:get_env(nova, cowboy_configuration, #{}),
-
+    Configuration = application:get_env(nova,
+                                        cowboy_configuration,
+                                        #{}),
     setup_cowboy(Configuration),
-
-    SessionManager = application:get_env(nova, session_manager, nova_session_ets),
-
-    BootstrapApp = application:get_env(nova, bootstrap_application, undefined),
-
-    Children = [
-                child(nova_router, nova_router, [BootstrapApp]),
+    SessionManager = application:get_env(nova,
+                                         session_manager,
+                                         nova_session_ets),
+    BootstrapApp = application:get_env(nova,
+                                       bootstrap_application,
+                                       undefined),
+    Children = [child(nova_router,
+                      nova_router,
+                      [BootstrapApp]),
                 child(nova_handlers, nova_handlers),
                 child(nova_plugin, nova_plugin),
-                child(SessionManager, SessionManager)
-               ],
-
+                child(SessionManager, SessionManager)],
     case application:get_env(nova, dev_mode, false) of
-        false ->
-            ?INFO("Starting nova in production mode...");
-        true ->
-            ?INFO("Starting nova in developer mode...")
+        false -> ?INFO("Starting nova in production mode...");
+        true -> ?INFO("Starting nova in developer mode...")
     end,
     {ok, {SupFlags, Children}}.
-
-
-
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 child(Id, Mod, Args) ->
-    #{id => Id,
-      start => {Mod, start_link, Args},
-      restart => permanent,
-      shutdown => 5000,
-      type => worker,
+    #{id => Id, start => {Mod, start_link, Args},
+      restart => permanent, shutdown => 5000, type => worker,
       modules => [Mod]}.
 
-child(Id, Mod) ->
-    child(Id, Mod, []).
+child(Id, Mod) -> child(Id, Mod, []).
 
 setup_cowboy(Configuration) ->
     case start_cowboy(Configuration) of
-        {ok, _} ->
-            ok;
+        {ok, _} -> ok;
         {error, Error} ->
             ?WARNING("Cowboy could not start reason: ~p", [Error])
     end.
 
 start_cowboy(Configuration) ->
     ?INFO("Nova is starting cowboy..."),
-    Middlewares = maps:get(middlewares, Configuration, [cowboy_router, cowboy_handler]),
-    StreamHandlers = maps:get(stream_handlers, Configuration, [nova_stream_h, cowboy_compress_h, cowboy_stream_h]),
-    Options = maps:get(options, Configuration, #{compress => true}),
-
+    Middlewares = maps:get(middlewares,
+                           Configuration,
+                           [cowboy_router, cowboy_handler]),
+    StreamHandlers = maps:get(stream_handlers,
+                              Configuration,
+                              [nova_stream_h, cowboy_compress_h, cowboy_stream_h]),
+    Options = maps:get(options,
+                       Configuration,
+                       #{compress => true}),
     %% Build the options map
     CowboyOptions = Options#{middlewares => Middlewares,
                              stream_handlers => StreamHandlers},
-
     case maps:get(use_ssl, Configuration, false) of
         false ->
-            cowboy:start_clear(
-              nova_listener,
-              [{port, maps:get(port, Configuration, 8080)}],
-              CowboyOptions);
+            cowboy:start_clear(nova_listener,
+                               [{port, maps:get(port, Configuration, 8080)}],
+                               CowboyOptions);
         _ ->
             CACert = maps:get(ca_cert, Configuration),
             Cert = maps:get(cert, Configuration),
             Port = maps:get(ssl_port, Configuration, 8443),
             ?INFO("Nova is starting SSL on port ~p", [Port]),
-            cowboy:start_tls(
-              nova_listener, [
-                              {port, Port},
-                              {certfile, Cert},
-                              {cacertfile, CACert}
-                             ],
-              CowboyOptions)
+            cowboy:start_tls(nova_listener,
+                             [{port, Port}, {certfile, Cert}, {cacertfile, CACert}],
+                             CowboyOptions)
     end.

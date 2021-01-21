@@ -17,12 +17,10 @@
 %% API
 %%====================================================================
 
-start(_StartType, _StartArgs) ->
-    nova_sup:start_link().
+start(_StartType, _StartArgs) -> nova_sup:start_link().
 
 %%--------------------------------------------------------------------
-stop(_State) ->
-    ok.
+stop(_State) -> ok.
 
 %%====================================================================
 %% Internal functions

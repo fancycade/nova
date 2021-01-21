@@ -41,56 +41,55 @@
 -behaviour(gen_server).
 
 %% API
--export([
-         start_link/0,
+-export([start_link/0,
          register_pre_handler/2,
          register_handler/2,
          unregister_pre_handler/2,
          unregister_handler/1,
          get_handler/1,
-         get_pre_handlers/1
-        ]).
+         get_pre_handlers/1]).
 
 %% gen_server callbacks
--export([
-         init/1,
+-export([init/1,
          handle_call/3,
          handle_cast/2,
          handle_info/2,
          terminate/2,
          code_change/3,
-         format_status/2
-        ]).
+         format_status/2]).
 
 -include_lib("nova/include/nova.hrl").
 
 -define(SERVER, ?MODULE).
 
 -define(HANDLERS_TABLE, nova_handlers_table).
--define(PRE_HANDLERS_TABLE, nova_handlers_pre_handlers_table).
 
--type handler_return() :: {ok, StatusCode :: integer(), Headers :: map(), Body :: binary() | tuple(),
+-define(PRE_HANDLERS_TABLE,
+        nova_handlers_pre_handlers_table).
+
+-type handler_return() :: {ok, StatusCode :: integer(),
+                           Headers :: map(), Body :: binary() | tuple(),
                            State :: nova_http_handler:nova_http_state()} |
                           {error, Reason :: any()}.
 
 -export_type([handler_return/0]).
 
--type pre_handler_return() :: {ok, Req :: cowboy_req:req()} |
-                              {stop, Req :: cowboy_req:req() | undefined } |
+-type pre_handler_return() :: {ok,
+                               Req :: cowboy_req:req()} |
+                              {stop, Req :: cowboy_req:req() | undefined} |
                               {error, Reason :: atom()}.
+
 -export_type([pre_handler_return/0]).
 
-
--type nova_handler_callback() :: {Module :: atom(), Function :: atom()} |
+-type nova_handler_callback() :: {Module :: atom(),
+                                  Function :: atom()} |
                                  fun((...) -> handler_return()).
 
--type nova_pre_handler_callback() :: {Module :: atom(), Function :: atom()} |
+-type nova_pre_handler_callback() :: {Module :: atom(),
+                                      Function :: atom()} |
                                      fun((...) -> pre_handler_return()).
 
-
-
--record(state, {
-               }).
+-record(state, {}).
 
 %%%===================================================================
 %%% API
@@ -106,9 +105,12 @@
                       {error, Error :: {already_started, pid()}} |
                       {error, Error :: term()} |
                       ignore.
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
+start_link() ->
+    gen_server:start_link({local, ?SERVER},
+                          ?MODULE,
+                          [],
+                          []).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -117,10 +119,13 @@ start_link() ->
 %% that's registered will be called on for each request.
 %% @end
 %%--------------------------------------------------------------------
--spec register_pre_handler(Protocol :: http, Callback :: nova_pre_handler_callback()) ->
-                                  ok | {error, Reason :: atom()}.
+-spec register_pre_handler(Protocol :: http,
+                           Callback :: nova_pre_handler_callback()) -> ok |
+                                                                       {error, Reason :: atom()}.
+
 register_pre_handler(Protocol, Callback) ->
-    gen_server:cast(?SERVER, {register_pre_handler, Protocol, Callback}).
+    gen_server:cast(?SERVER,
+                    {register_pre_handler, Protocol, Callback}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -128,20 +133,25 @@ register_pre_handler(Protocol, Callback) ->
 %% by returning a tuple where the first element is the name of the handler.
 %% @end
 %%--------------------------------------------------------------------
--spec register_handler(Handle :: atom(), Callback :: nova_handler_callback()) ->
-                              ok | {error, Reason :: atom()}.
+-spec register_handler(Handle :: atom(),
+                       Callback :: nova_handler_callback()) -> ok |
+                                                               {error, Reason :: atom()}.
+
 register_handler(Handle, Callback) ->
-    gen_server:cast(?SERVER, {register_handler, Handle, Callback}).
+    gen_server:cast(?SERVER,
+                    {register_handler, Handle, Callback}).
 
 %%--------------------------------------------------------------------
 %% @doc
 %% Unregisters a handler and makes it unavailable for all controllers.
 %% @end
 %%--------------------------------------------------------------------
--spec unregister_pre_handler(Protocol :: http, Callback :: nova_pre_handler_callback()) ->
-                                    ok.
+-spec unregister_pre_handler(Protocol :: http,
+                             Callback :: nova_pre_handler_callback()) -> ok.
+
 unregister_pre_handler(Protocol, Callback) ->
-    gen_server:call(?SERVER, {unregister_pre_handler, Protocol, Callback}).
+    gen_server:call(?SERVER,
+                    {unregister_pre_handler, Protocol, Callback}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -149,6 +159,7 @@ unregister_pre_handler(Protocol, Callback) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec unregister_handler(Handle :: atom()) -> ok.
+
 unregister_handler(Handle) ->
     gen_server:call(?SERVER, {unregister_handler, Handle}).
 
@@ -158,14 +169,14 @@ unregister_handler(Handle) ->
 %% function for it.
 %% @end
 %%--------------------------------------------------------------------
--spec get_handler(Handle :: atom()) -> {ok, Callback :: nova_handler_callback()} |
+-spec get_handler(Handle :: atom()) -> {ok,
+                                        Callback :: nova_handler_callback()} |
                                        {error, not_found}.
+
 get_handler(Handle) ->
     case ets:lookup(?HANDLERS_TABLE, Handle) of
-        [] ->
-            {error, not_found};
-        [{Handle, Callback}] ->
-            {ok, Callback}
+        [] -> {error, not_found};
+        [{Handle, Callback}] -> {ok, Callback}
     end.
 
 %%--------------------------------------------------------------------
@@ -173,14 +184,13 @@ get_handler(Handle) ->
 %% Returns all pre-handlers associated with the given protocol (Eg http).
 %% @end
 %%--------------------------------------------------------------------
--spec get_pre_handlers(Protocol :: atom()) -> {ok, Elements :: [nova_pre_handler_callback()]}.
+-spec get_pre_handlers(Protocol :: atom()) -> {ok,
+                                               Elements :: [nova_pre_handler_callback()]}.
+
 get_pre_handlers(Protocol) ->
     Elements = ets:lookup(?PRE_HANDLERS_TABLE, Protocol),
     %% Strip the keys
-    Elements0 =
-        lists:map(fun({_P, H}) ->
-                          H
-                  end, Elements),
+    Elements0 = lists:map(fun ({_P, H}) -> H end, Elements),
     {ok, Elements0}.
 
 %%%===================================================================
@@ -198,15 +208,22 @@ get_pre_handlers(Protocol) ->
                               {ok, State :: term(), hibernate} |
                               {stop, Reason :: term()} |
                               ignore.
+
 init([]) ->
     process_flag(trap_exit, true),
     ets:new(?HANDLERS_TABLE, [named_table, set, protected]),
-    ets:new(?PRE_HANDLERS_TABLE, [named_table, bag, protected]),
-    register_handler(json, fun nova_basic_handler:handle_json/3),
-    register_handler(ok, fun nova_basic_handler:handle_ok/3),
-    register_handler(status, fun nova_basic_handler:handle_status/3),
-    register_handler(redirect, fun nova_basic_handler:handle_redirect/3),
-    register_handler(sendfile, fun nova_basic_handler:handle_sendfile/3),
+    ets:new(?PRE_HANDLERS_TABLE,
+            [named_table, bag, protected]),
+    register_handler(json,
+                     fun nova_basic_handler:handle_json/3),
+    register_handler(ok,
+                     fun nova_basic_handler:handle_ok/3),
+    register_handler(status,
+                     fun nova_basic_handler:handle_status/3),
+    register_handler(redirect,
+                     fun nova_basic_handler:handle_redirect/3),
+    register_handler(sendfile,
+                     fun nova_basic_handler:handle_sendfile/3),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -215,24 +232,36 @@ init([]) ->
 %% Handling call messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(Request :: term(), From :: {pid(), term()}, State :: term()) ->
-                         {reply, Reply :: term(), NewState :: term()} |
-                         {reply, Reply :: term(), NewState :: term(), Timeout :: timeout()} |
-                         {reply, Reply :: term(), NewState :: term(), hibernate} |
-                         {noreply, NewState :: term()} |
-                         {noreply, NewState :: term(), Timeout :: timeout()} |
-                         {noreply, NewState :: term(), hibernate} |
-                         {stop, Reason :: term(), Reply :: term(), NewState :: term()} |
-                         {stop, Reason :: term(), NewState :: term()}.
-handle_call({unregister_handler, Handle}, _From, State) ->
+-spec handle_call(Request :: term(),
+                  From :: {pid(), term()}, State :: term()) -> {reply,
+                                                                Reply :: term(),
+                                                                NewState :: term()} |
+                                                               {reply, Reply :: term(),
+                                                                NewState :: term(),
+                                                                Timeout :: timeout()} |
+                                                               {reply, Reply :: term(),
+                                                                NewState :: term(), hibernate} |
+                                                               {noreply, NewState :: term()} |
+                                                               {noreply, NewState :: term(),
+                                                                Timeout :: timeout()} |
+                                                               {noreply, NewState :: term(),
+                                                                hibernate} |
+                                                               {stop, Reason :: term(),
+                                                                Reply :: term(),
+                                                                NewState :: term()} |
+                                                               {stop, Reason :: term(),
+                                                                NewState :: term()}.
+
+handle_call({unregister_handler, Handle}, _From,
+            State) ->
     ets:delete(?HANDLERS_TABLE, Handle),
     ?DEBUG("Removed handler ~p", [Handle]),
     {reply, ok, State};
-
-handle_call({unregister_pre_handler, Protocol, Handler}, _From, State) ->
-    ets:delete_object(?PRE_HANDLERS_TABLE, {Protocol, Handler}),
+handle_call({unregister_pre_handler, Protocol, Handler},
+            _From, State) ->
+    ets:delete_object(?PRE_HANDLERS_TABLE,
+                      {Protocol, Handler}),
     {reply, ok, State};
-
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -243,37 +272,39 @@ handle_call(_Request, _From, State) ->
 %% Handling cast messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(Request :: term(), State :: term()) ->
-                         {noreply, NewState :: term()} |
-                         {noreply, NewState :: term(), Timeout :: timeout()} |
-                         {noreply, NewState :: term(), hibernate} |
-                         {stop, Reason :: term(), NewState :: term()}.
-handle_cast({register_handler, Handle, Callback}, State) ->
-    Callback0 =
-        case Callback of
-            Callback when is_function(Callback) -> Callback;
-            {Module, Function} -> fun Module:Function/4
-        end,
+-spec handle_cast(Request :: term(),
+                  State :: term()) -> {noreply, NewState :: term()} |
+                                      {noreply, NewState :: term(), Timeout :: timeout()} |
+                                      {noreply, NewState :: term(), hibernate} |
+                                      {stop, Reason :: term(), NewState :: term()}.
+
+handle_cast({register_handler, Handle, Callback},
+            State) ->
+    Callback0 = case Callback of
+                    Callback when is_function(Callback) -> Callback;
+                    {Module, Function} -> fun Module:Function/4
+                end,
     case ets:lookup(?HANDLERS_TABLE, Handle) of
         [] ->
             ?DEBUG("Registered handler '~p'", [Handle]),
             ets:insert(?HANDLERS_TABLE, {Handle, Callback0}),
             {noreply, State};
         _ ->
-            ?ERROR("Could not register handler ~p since there's already another one registered on that name", [Handle]),
+            ?ERROR("Could not register handler ~p since "
+                   "there's already another one registered "
+                   "on that name",
+                   [Handle]),
             {noreply, State}
     end;
-handle_cast({register_pre_handler, Protocol, Callback}, State) ->
-    Callback0 =
-        case Callback of
-            Callback when is_function(Callback) -> Callback;
-            {Module, Function} -> fun Module:Function/1
-        end,
+handle_cast({register_pre_handler, Protocol, Callback},
+            State) ->
+    Callback0 = case Callback of
+                    Callback when is_function(Callback) -> Callback;
+                    {Module, Function} -> fun Module:Function/1
+                end,
     ets:insert(?PRE_HANDLERS_TABLE, {Protocol, Callback0}),
     {noreply, State};
-
-handle_cast(_Request, State) ->
-    {noreply, State}.
+handle_cast(_Request, State) -> {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -281,13 +312,13 @@ handle_cast(_Request, State) ->
 %% Handling all non call/cast messages
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(Info :: timeout() | term(), State :: term()) ->
-                         {noreply, NewState :: term()} |
-                         {noreply, NewState :: term(), Timeout :: timeout()} |
-                         {noreply, NewState :: term(), hibernate} |
-                         {stop, Reason :: normal | term(), NewState :: term()}.
-handle_info(_Info, State) ->
-    {noreply, State}.
+-spec handle_info(Info :: timeout() | term(),
+                  State :: term()) -> {noreply, NewState :: term()} |
+                                      {noreply, NewState :: term(), Timeout :: timeout()} |
+                                      {noreply, NewState :: term(), hibernate} |
+                                      {stop, Reason :: normal | term(), NewState :: term()}.
+
+handle_info(_Info, State) -> {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -298,10 +329,13 @@ handle_info(_Info, State) ->
 %% with Reason. The return value is ignored.
 %% @end
 %%--------------------------------------------------------------------
--spec terminate(Reason :: normal | shutdown | {shutdown, term()} | term(),
+-spec terminate(Reason :: normal |
+                          shutdown |
+                          {shutdown, term()} |
+                          term(),
                 State :: term()) -> any().
-terminate(_Reason, _State) ->
-    ok.
+
+terminate(_Reason, _State) -> ok.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -310,11 +344,11 @@ terminate(_Reason, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec code_change(OldVsn :: term() | {down, term()},
-                  State :: term(),
-                  Extra :: term()) -> {ok, NewState :: term()} |
-                                      {error, Reason :: term()}.
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
+                  State :: term(), Extra :: term()) -> {ok,
+                                                        NewState :: term()} |
+                                                       {error, Reason :: term()}.
+
+code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -326,8 +360,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec format_status(Opt :: normal | terminate,
                     Status :: list()) -> Status :: term().
-format_status(_Opt, Status) ->
-    Status.
+
+format_status(_Opt, Status) -> Status.
 
 %%%===================================================================
 %%% Internal functions

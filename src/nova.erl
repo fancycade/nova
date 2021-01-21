@@ -5,12 +5,9 @@
 
 -module(nova).
 
--export([
-         get_main_app/0,
+-export([get_main_app/0,
          application_loaded/1,
-         get_env/2
-        ]).
-
+         get_env/2]).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -20,8 +17,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec get_main_app() -> {ok, Application :: atom()}.
-get_main_app() ->
-    {ok, nova_router:get_main_app()}.
+
+get_main_app() -> {ok, nova_router:get_main_app()}.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -29,13 +26,16 @@ get_main_app() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec application_loaded(Application::atom()) -> boolean().
+-spec application_loaded(Application ::
+                             atom()) -> boolean().
+
 application_loaded(Application) ->
     %% First we need to check which application that is the main one
     {ok, MainApp} = get_main_app(),
-    lists:any(fun({CompApp, _, _}) -> CompApp == Application end,
+    lists:any(fun ({CompApp, _, _}) ->
+                      CompApp == Application
+              end,
               application:get_env(MainApp, nova_applications, [])).
-
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -45,6 +45,10 @@ application_loaded(Application) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_env(Parameter :: atom(), Default :: any()) -> any().
+-spec get_env(Parameter :: atom(),
+              Default :: any()) -> any().
+
 get_env(Parameter, Default) ->
-    application:get_env(nova_router:get_main_app(), Parameter, Default).
+    application:get_env(nova_router:get_main_app(),
+                        Parameter,
+                        Default).
