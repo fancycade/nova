@@ -73,6 +73,10 @@ init(Req, State) ->
                 {ok, PostPlugins} = nova_plugin:get_plugins(post_http_request),
                 {_, State3} = run_plugins(PostPlugins, post_http_request, State2),
                 State3;
+            {skip_controller, State1} ->
+                {ok, PostPlugins} = nova_plugin:get_plugins(post_http_request),
+                {_, State2} = run_plugins(PostPlugins, post_http_request, State1),
+                State2;
             {stop, State1} ->
                 State1
         end,
