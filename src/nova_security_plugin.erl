@@ -24,7 +24,7 @@
 pre_http_request(State = #{req := Req, secure := {Module, Function}, controller_data := ControllerData}, _Options) ->
     try Module:Function(State) of
         {true, AuthData} ->
-            {ok, State#{controller_data => maps:put(auth_data, AuthData, ControllerData)}}
+            {ok, State#{controller_data => maps:put(auth_data, AuthData, ControllerData)}};
         true ->
             {ok, State};
         false ->
