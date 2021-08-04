@@ -90,10 +90,8 @@ modulate_state(State = #{req := Req = #{headers := #{<<"content-type">> := <<"ap
 	true ->
 	    {ok, Data, Req0} = cowboy_req:read_urlencoded_body(Req),
 	    Params = maps:from_list(Data),
-	    logger:debug("Decoding params ~p", [Params]),
 	    modulate_state(State#{req => Req0, controller_data => ControllerData#{params => Params}}, Tl);
 	false ->
-	    logger:debug("Did not decode params"),
 	    modulate_state(State#{controller_data => ControllerData#{params => #{}}}, Tl)
     end;
 modulate_state(State = #{req := Req,

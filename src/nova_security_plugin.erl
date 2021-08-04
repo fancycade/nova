@@ -22,7 +22,7 @@
                               {stop, State0 :: nova_http_handler:nova_http_state()} |
                               {error, Reason :: term()}.
 pre_http_request(State = #{req := Req, secure := {Module, Function}, controller_data := ControllerData}, _Options) ->
-    try Module:Function(State) of
+    try Module:Function(maps:put(req, Req, ControllerData)) of
         {true, AuthData} ->
             {ok, State#{controller_data => maps:put(auth_data, AuthData, ControllerData)}};
         true ->
