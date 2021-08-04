@@ -57,7 +57,8 @@ plugin_info() ->
       {parse_bindings, <<"Used to parse bindings and put them in state under `bindings` key">>},
       {read_body, <<"Reads the body and put it under the `body`">>},
       {decode_json_body, <<"Decodes the body as JSON and puts it under `json`">>},
-      {parse_qs, <<"Used to parse qs and put hem in state under `qs` key">>}
+      {parse_qs, <<"Used to parse qs and put them in state under `qs` key">>},
+      {read_urlencoded_body, <<"Used to parse url encoded params and put them in state under `params` key">>}
      ]}.
 
 
@@ -81,6 +82,17 @@ modulate_state(State = #{req :=  Req = #{headers := #{<<"content-type">> := <<"a
             modulate_state(State#{req => Req0, controller_data => ControllerData#{json => JSON}}, Tl);
         false ->
             modulate_state(State#{controller_data => ControllerData#{json => #{}}}, Tl)
+    end;
+modulate_state(State = #{req := Req = #{headers := #{<<"content-type">> := <<"application/x-www-form-urlencoded", _/binary>>}},
+			 controller_data := ControllerData},
+	       [read_urlencoded_body|Tl]) ->
+    case cowboy_req:had_body(Req) of
+	true ->
+	    {ok, Data, Req0} = cowboy_req:read_urlencoded_body(Req),
+	    Params = maps:from_list(Data),
+	    modulate_state(State#{req => Req0, controller_data => ControllerData#{params => Params}}, Tl);
+	false ->
+	    modulate_state(State#{controller_data => ControllerData#{params => #{}}}, Tl)
     end;
 modulate_state(State = #{req := Req,
                          controller_data := ControllerData}, [read_body|Tl]) ->
