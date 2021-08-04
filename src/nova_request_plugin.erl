@@ -86,7 +86,7 @@ modulate_state(State = #{req :=  Req = #{headers := #{<<"content-type">> := <<"a
 modulate_state(State = #{req := Req = #{headers := #{<<"content-type">> := <<"application/x-www-form-urlencoded", _/binary>>}},
 			 controller_data := ControllerData},
 	       [read_urlencoded_body|Tl]) ->
-    case cowboy_req:had_body(Req) of
+    case cowboy_req:has_body(Req) of
 	true ->
 	    {ok, Data, Req0} = cowboy_req:read_urlencoded_body(Req),
 	    Params = maps:from_list(Data),
@@ -99,8 +99,8 @@ modulate_state(State = #{req := Req,
     %% Fetch the body
     {ok, Data, Req0} = cowboy_req:read_body(Req),
     modulate_state(State#{req => Req0, controller_data => ControllerData#{body => Data}}, Tl);
-modulate_state(State = #{req := Req, controller_data := ControllerData}, [parse_qs|T1]) ->
+modulate_state(State = #{req := Req, controller_data := ControllerData}, [parse_qs|Tl]) ->
     Qs = cowboy_req:parse_qs(Req),
-    modulate_state(State#{controller_data => ControllerData#{qs => Qs}}, T1);
+    modulate_state(State#{controller_data => ControllerData#{qs => Qs}}, Tl);
 modulate_state(State, [_|Tl]) ->
     modulate_state(State, Tl).
